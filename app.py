@@ -16,12 +16,12 @@ warnings.filterwarnings("ignore")
 def carregar_modelo():
     """Carrega o pipeline de modelo treinado."""
     try:
-        # Carrega o modelo de 4 variáveis
-        modelo = joblib.load('modelo_aluguel_4vars.pkl')
+        # Carrega o novo modelo de 5 variáveis
+        modelo = joblib.load('modelo_aluguel_5vars.pkl') 
         return modelo
     except FileNotFoundError:
-        st.error("Arquivo 'modelo_aluguel_4vars.pkl' não encontrado.")
-        st.info("Certifique-se de que o arquivo .pkl está no mesmo diretório do app.py no GitHub.")
+        st.error("Arquivo 'modelo_aluguel_5vars.pkl' não encontrado.")
+        st.info("Certifique-se de que o arquivo .pkl (com o nome correto) está no repositório GitHub.")
         st.stop()
     except Exception as e:
         st.error(f"Erro ao carregar o modelo: {e}")
@@ -51,29 +51,25 @@ bairros_unicos = carregar_bairros()
 # ---------------------------------------------------------------------
 
 st.title("🏙️ Estimador de Aluguel de Imóveis")
-st.markdown("Preencha os dados abaixo para estimar o valor total do aluguel (R² de **0.878**).")
+st.markdown("Preencha os dados abaixo para estimar o valor total do aluguel.")
 
 st.sidebar.header("Preencha os dados do imóvel:")
 
-# Features usadas no seu modelo (X)
+# Features usadas no seu novo modelo (X)
 metragem = st.sidebar.slider(
-    "Metragem (m²)",
-    min_value=20,
-    max_value=300,
-    value=65,
-    step=5
+    "Metragem (m²)", min_value=20, max_value=300, value=65, step=5
 )
 
 quartos = st.sidebar.selectbox(
-    "Quartos",
-    options=[0, 1, 2, 3, 4, 5, 6],
-    index=2 # Padrão 2
+    "Quartos", options=[0, 1, 2, 3, 4, 5, 6], index=2
 )
 
 banheiros = st.sidebar.selectbox(
-    "Banheiros",
-    options=[1, 2, 3, 4, 5],
-    index=1 
+    "Banheiros", options=[0, 1, 2, 3, 4, 5], index=1
+)
+
+vagas = st.sidebar.selectbox(
+    "Vagas de Garagem", options=[0, 1, 2, 3, 4, 5], index=1
 )
 
 # Input categórico
@@ -82,9 +78,7 @@ if 'aclimacao' in bairros_unicos:
     bairro_default_index = bairros_unicos.index('aclimacao')
 
 bairro = st.sidebar.selectbox(
-    "Bairro",
-    options=bairros_unicos,
-    index=bairro_default_index
+    "Bairro", options=bairros_unicos, index=bairro_default_index
 )
 
 # ---------------------------------------------------------------------
@@ -94,11 +88,12 @@ bairro = st.sidebar.selectbox(
 # Botão para prever
 if st.sidebar.button("Estimar Valor", type="primary"):
     try:
-        # 1. Criar DataFrame de entrada
+        # 1. Criar DataFrame de entrada (5 variáveis)
         input_data = pd.DataFrame({
             'Metragem': [metragem],
             'Quartos': [quartos],
             'Banheiros': [banheiros],
+            'Vagas': [vagas], # Variável incluída
             'Bairro': [bairro]
         })
         
@@ -116,9 +111,10 @@ if st.sidebar.button("Estimar Valor", type="primary"):
         st.write(f"**Metragem:** {metragem} m²")
         st.write(f"**Quartos:** {quartos}")
         st.write(f"**Banheiros:** {banheiros}")
+        st.write(f"**Vagas:** {vagas}") # Variável incluída
         st.write(f"**Bairro:** {bairro.title()}")
 
-        st.info(f"**Modelo Utilizado:** Random Forest (R²: 0.878)")
+        st.info(f"**Modelo Utilizado:** Random Forest (5 variáveis)")
 
     except Exception as e:
         st.error(f"Erro ao realizar a previsão: {e}")
