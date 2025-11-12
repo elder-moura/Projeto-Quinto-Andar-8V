@@ -61,9 +61,6 @@ metragem = st.sidebar.number_input("Metragem (m²)", min_value=10, max_value=100
 quartos = st.sidebar.selectbox("Quartos", options=[0, 1, 2, 3, 4, 5, 6, 7, 8], index=2)
 banheiros = st.sidebar.selectbox("Banheiros", options=[0, 1, 2, 3, 4, 5, 6], index=1)
 vagas = st.sidebar.selectbox("Vagas de Garagem", options=[0, 1, 2, 3, 4, 5], index=1)
-andar = st.sidebar.number_input("Andar (0 para térreo)", min_value=0, max_value=50, value=3, step=1)
-mobilia = st.sidebar.selectbox("Mobiliado?", options=[0, 1], format_func=lambda x: "Sim" if x == 1 else "Não", index=0)
-pet = st.sidebar.selectbox("Aceita Pet?", options=[0, 1], format_func=lambda x: "Sim" if x == 1 else "Não", index=1)
 
 bairro_default_index = 0
 if 'aclimacao' in bairros_unicos:
@@ -89,8 +86,8 @@ with tab1:
             # 1. Criar DataFrame de entrada
             input_data = pd.DataFrame({
                 'Metragem': [metragem], 'Quartos': [quartos], 'Banheiros': [banheiros],
-                'Mobilia': [mobilia], 'Pet': [pet], 'Vagas': [vagas],
-                'Andar': [andar], 'Bairro': [bairro]
+                'Vagas': [vagas],
+                'Bairro': [bairro]
             })
             
             # 2. Fazer a previsão
@@ -108,9 +105,6 @@ with tab1:
                 st.write(f"**Banheiros:** {banheiros}")
                 st.write(f"**Vagas:** {vagas}")
             with col2:
-                st.write(f"**Andar:** {andar if andar > 0 else 'Térreo'}")
-                st.write(f"**Mobiliado:** {'Sim' if mobilia == 1 else 'Não'}")
-                st.write(f"**Aceita Pet:** {'Sim' if pet == 1 else 'Não'}")
                 st.write(f"**Bairro:** {bairro.title()}")
         
         except Exception as e:
@@ -136,13 +130,12 @@ with tab2:
         with col1:
             st.image('graf_top_bairros_caros.png', caption='Top 10 Bairros por Preço Médio Total')
             st.image('graf_metragem_vs_preco.png', caption='Metragem vs. Preço Total')
-            st.image('graf_mobilia_vs_preco.png', caption='Preço por Mobilia')
             
         with col2:
             st.image('graf_top_bairros_valorizados.png', caption='Top 15 Bairros por Preço Médio/m²')
             st.image('graf_quartos_vs_preco.png', caption='Preço por Número de Quartos')
-            st.image('graf_pet_vs_preco.png', caption='Preço por Política de Pet')
             
     except Exception as e:
         st.error(f"Erro ao carregar gráficos: {e}")
+
         st.info("Certifique-se de que os arquivos 'graf_*.png' estão no repositório do GitHub.")
