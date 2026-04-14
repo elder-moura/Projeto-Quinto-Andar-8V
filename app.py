@@ -8,24 +8,23 @@ import warnings
 # Ignorar avisos
 warnings.filterwarnings("ignore")
 
+# Configuração da página para ocupar mais espaço e ter um título na aba do navegador
+st.set_page_config(page_title="Estimador de Aluguel", page_icon="🏙️", layout="wide")
+
 # ---------------------------------------------------------------------
-# FUNÇÃO PARA CARREGAR OS ARQUIVOS
+# FUNÇÕES DE CARREGAMENTO E LÓGICA (BACKEND DO STREAMLIT)
 # ---------------------------------------------------------------------
 
 @st.cache_resource
 def carregar_modelo():
     """Carrega o pipeline de modelo treinado."""
     try:
-        # Carrega o novo modelo de 5 variáveis
-        modelo = joblib.load('modelo_aluguel_5vars.pkl') 
-        return modelo
+        return joblib.load('modelo_aluguel_5vars.pkl') 
     except FileNotFoundError:
-        st.error("Arquivo 'modelo_aluguel_5vars.pkl' não encontrado.")
-        st.info("Certifique-se de que o arquivo .pkl (com o nome correto) está no repositório GitHub.")
+        st.error("🚨 Arquivo 'modelo_aluguel_5vars.pkl' não encontrado.")
         st.stop()
     except Exception as e:
-        st.error(f"Erro ao carregar o modelo: {e}")
-        st.info("Lembre-se de verificar se a versão do scikit-learn no requirements.txt é a mesma do Colab.")
+        st.error(f"🚨 Erro ao carregar o modelo. Verifique a versão do scikit-learn. Detalhe: {e}")
         st.stop()
 
 @st.cache_data
@@ -33,91 +32,75 @@ def carregar_bairros():
     """Carrega a lista de bairros únicos."""
     try:
         with open('bairros_unicos.json', 'r', encoding='utf-8') as f:
-            bairros = json.load(f)
-        return bairros
-    except FileNotFoundError:
-        st.error("Arquivo 'bairros_unicos.json' não encontrado.")
-        st.stop()
-    except Exception as e:
-        st.error(f"Erro ao carregar a lista de bairros: {e}")
-        return []
+            return json.load(f)
+    except Exception:
+        return ["Bairro Padrão"] # Fallback caso o arquivo falhe
 
-# Carregar os arquivos
+def realizar_previsao(modelo, metragem, quartos, banheiros, vagas, bairro):
+    """Encapsula a lógica de montagem do DataFrame e inferência."""
+    input_data = pd.DataFrame({
+        'Metragem': [metragem],
+        'Quartos': [quartos],
+        'Banheiros': [banheiros],
+        'Vagas': [vagas],
+        'Bairro': [bairro]
+    })
+    return modelo.predict(input_data)[0]
+
+# Carregar os artefatos
 modelo_pipeline = carregar_modelo()
 bairros_unicos = carregar_bairros()
 
 # ---------------------------------------------------------------------
-# INTERFACE DO USUÁRIO (Inputs na Barra Lateral)
+# INTERFACE DO USUÁRIO (FRONTEND DO STREAMLIT)
 # ---------------------------------------------------------------------
 
-st.title("🏙️ Estimador de Aluguel de Imóveis")
-st.markdown("Preencha os dados abaixo para estimar o valor total do aluguel.")
+st.title("🏙️ Estimador de Aluguel Inteligente")
+st.markdown("Descubra o valor ideal do aluguel com base nas características do imóvel.")
+st.divider()
 
-st.sidebar.header("Preencha os dados do imóvel:")
+# Layout em colunas para a área principal
+col_inputs, col_resultados = st.columns([1, 2], gap="large")
 
-# Features usadas no seu novo modelo (X)
-metragem = st.sidebar.slider(
-    "Metragem (m²)", min_value=20, max_value=300, value=65, step=5
-)
+with col_inputs:
+    st.subheader("⚙️ Características")
+    
+    # Inputs organizados
+    bairro = st.selectbox("📍 Bairro", options=bairros_unicos)
+    metragem = st.number_input("📏 Metragem (m²)", min_value=20, max_value=500, value=65, step=1)
+    
+    # Usando colunas internas para inputs menores
+    c1, c2 = st.columns(2)
+    with c1:
+        quartos = st.selectbox("🛏️ Quartos", options=[0, 1, 2, 3, 4, 5, 6], index=2)
+        vagas = st.selectbox("🚗 Vagas", options=[0, 1, 2, 3, 4, 5], index=1)
+    with c2:
+        banheiros = st.selectbox("🚿 Banheiros", options=[0, 1, 2, 3, 4, 5], index=1)
+    
+    # Botão de ação destacado
+    calcular = st.button("📊 Estimar Valor", type="primary", use_container_width=True)
 
-quartos = st.sidebar.selectbox(
-    "Quartos", options=[0, 1, 2, 3, 4, 5, 6], index=2
-)
-
-banheiros = st.sidebar.selectbox(
-    "Banheiros", options=[0, 1, 2, 3, 4, 5], index=1
-)
-
-vagas = st.sidebar.selectbox(
-    "Vagas de Garagem", options=[0, 1, 2, 3, 4, 5], index=1
-)
-
-# Input categórico
-bairro_default_index = 0
-if 'aclimacao' in bairros_unicos:
-    bairro_default_index = bairros_unicos.index('aclimacao')
-
-bairro = st.sidebar.selectbox(
-    "Bairro", options=bairros_unicos, index=bairro_default_index
-)
-
-# ---------------------------------------------------------------------
-# LÓGICA DE PREVISÃO E EXIBIÇÃO
-# ---------------------------------------------------------------------
-
-# Botão para prever
-if st.sidebar.button("Estimar Valor", type="primary"):
-    try:
-        # 1. Criar DataFrame de entrada (5 variáveis)
-        input_data = pd.DataFrame({
-            'Metragem': [metragem],
-            'Quartos': [quartos],
-            'Banheiros': [banheiros],
-            'Vagas': [vagas], # Variável incluída
-            'Bairro': [bairro]
-        })
-        
-        # 2. Fazer a previsão
-        previsao = modelo_pipeline.predict(input_data)[0]
-        
-        # 3. Exibir o resultado
-        st.subheader("Valor Total Estimado (Aluguel + Condomínio + IPTU):")
-        preco_formatado = f"R$ {previsao:,.2f}"
-        
-        st.success(f"## {preco_formatado}")
-        
-        st.markdown("---")
-        st.subheader("Resumo dos Dados Informados:")
-        st.write(f"**Metragem:** {metragem} m²")
-        st.write(f"**Quartos:** {quartos}")
-        st.write(f"**Banheiros:** {banheiros}")
-        st.write(f"**Vagas:** {vagas}") # Variável incluída
-        st.write(f"**Bairro:** {bairro.title()}")
-
-        st.info(f"**Modelo Utilizado:** Random Forest (5 variáveis)")
-
-    except Exception as e:
-        st.error(f"Erro ao realizar a previsão: {e}")
-
-else:
-    st.info("Preencha os dados ao lado e clique em 'Estimar Valor'.")
+with col_resultados:
+    if calcular:
+        try:
+            with st.spinner("Analisando o mercado..."):
+                previsao = realizar_previsao(modelo_pipeline, metragem, quartos, banheiros, vagas, bairro)
+                preco_m2 = previsao / metragem if metragem > 0 else 0
+            
+            st.subheader("Resultado da Avaliação")
+            
+            # Data Storytelling: Exibindo os dados em formato de "Cards de KPI"
+            metric_col1, metric_col2 = st.columns(2)
+            
+            with metric_col1:
+                st.metric(label="Valor Total Estimado (Mensal)", value=f"R$ {previsao:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                
+            with metric_col2:
+                st.metric(label="Preço Médio por m²", value=f"R$ {preco_m2:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            
+            st.success(f"O modelo Random Forest encontrou o valor de **R$ {previsao:,.2f}** considerando o padrão histórico para imóveis de {metragem}m² no bairro **{bairro.title()}**.")
+            
+        except Exception as e:
+            st.error(f"Erro ao realizar a previsão: {e}")
+    else:
+        st.info("👈 Preencha as características do imóvel ao lado e clique em 'Estimar Valor' para ver a análise.")
